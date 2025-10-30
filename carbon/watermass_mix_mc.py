@@ -9,33 +9,52 @@ Author:
 import numpy as np
 
 # -------- INPUTS --------
-input_data = "NdDataForFractionCalculation.csv"
 output_data = "water_mass_ratio.csv"
 Num_Random = 10000
 
 # Load data: 2 columns -> Age (ka), epsilon Nd
-na_stack_dat = np.genfromtxt("NA_Stack.csv", delimiter=",", skip_header=1)
-u1385_dat = np.genfromtxt("U1385orU1475.csv", delimiter=",", skip_header=1)
-u1479_dat = np.genfromtxt("U1479orPacific.csv", delimiter=",", skip_header=1)
+ncw_dat = np.genfromtxt("NCW.csv", delimiter=",", skip_header=1)
+pdw_dat = np.genfromtxt("PDW.csv", delimiter=",", skip_header=1)
+sample_dat = np.genfromtxt("Sample.csv", delimiter=",", skip_header=1)
 
-print(na_stack_dat)
+ncw_r = 1.0
+ncw_err = 0.1
+pdw_r = -0.5
+pdw_err = 0.1
 
 # Result container
 Fnsw = []
 
 # Loop over input data
-for i in range(len(na_stack_dat)):
-    tme, na_stack, na_stack_err = na_stack_dat[i]
-    _, u1479, u1479_err = u1479_dat[i]
-    _, u1385 = u1385_dat[i]
-    r_na_stack = (na_stack - na_stack_err) + (2 * na_stack_err) * np.random.rand(
-        Num_Random
-    )
-    r_u1479 = (u1479 - u1479_err) + (2 * u1479_err) * np.random.rand(Num_Random)
+for i in range(len(ncw_dat)):
+    tme, ncw = ncw_dat[i]
+    if np.isnan(ncw):
+        continue
+    _, pdw = pdw_dat[i]
+    if np.isnan(pdw):
+        continue
+    _, sample = sample_dat[i]
+    if np.isnan(sample):
+        continue
 
-    f1 = (u1385 - r_u1479) / (r_na_stack - r_u1479) * 100.0
-    Fnsw.append([tme, np.mean(f1), np.std(f1)])
+    # r_na_stack = (na_stack - na_stack_err) + (2 * na_stack_err) * np.random.rand(
+    #     Num_Random
+    # ) * 0.0
+    ncw = (ncw - ncw_err) + (2 * ncw_err) * np.random.rand(Num_Random)
+    pdw = (pdw - pdw_err) + (2 * pdw_err) * np.random.rand(Num_Random)
+
+    f1 = (sample - pdw) / (ncw - pdw) * 100.0
+    f1_mean = np.mean(f1)
+    f1_std = np.std(f1)
+    # f1 = (u1385 - r_u1479) / (r_na_stack - r_u1479) * 100.0
+    if f1_mean > 100.0 or f1_mean < 0.0:
+        print(i + 2, sample, f1_mean)
+
+    Fnsw.append([tme, f1_mean, f1_std])
 Fnsw = np.array(Fnsw)  # type: ignore
+
+print("Min:", Fnsw.min(axis=0))
+print("Max:", Fnsw.max(axis=0))
 
 # Save result
 np.savetxt(
